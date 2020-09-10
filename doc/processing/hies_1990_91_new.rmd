@@ -1,0 +1,37 @@
+---
+title: "Data import and cleaning of 1995-91 HIES"
+author: "Rushad"
+date: "2020"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+Let's import the data 
+
+```{r}
+hesbas.char <- scan("./Data/HESBAS.DAT",what="")
+```
+Now let's turn into matrix
+
+```{r}
+hesbas.mat <- str_split(hesbas.char,"",simplify=T)
+```
+
+Now let's bring in record type 
+
+```{r}
+rectype <- read.csv("./Data/rectype.csv",stringsAsFactors = F)
+```
+
+Then following changes have been done 
+
+```{r}
+rectype[,1:dim(rectype)[2]]<-lapply(
+                                 rectype[,1:dim(rectype)[2]],
+                                      function(x) {
+                     x[grepl("^\\s*$",x)] <- NA;return(x)})
+```
+

@@ -1,0 +1,257 @@
+let's load some library first 
+
+```{r}
+library(tidyverse)
+library(haven)
+```
+
+
+
+
+# Reproduce table 2.1
+
+Let's import some data 
+
+
+
+
+Let's first import household data 
+
+```{r}
+hhold <- read_dta("../HIES2016-20200905T093607Z-001/HIES2016/COVER.dta")
+```
+
+Let's import household members data 
+
+```{r}
+members <-   read_dta("../HIES2016-20200905T093607Z-001/HIES2016/HH_SEC_1A.dta")
+members
+```
+
+Check no of strata 
+
+```{r}
+hhold %>% 
+  summarize(no.of.strata=n_distinct(stratum16))
+```
+
+here i thought it will be 20 according to the report, but seems its different, only 16. Must be just rural and urban
+
+
+Now check the no. of substratum
+
+
+```{r}
+hhold %>% 
+  summarize(no.of.strata=n_distinct(stratum))
+```
+
+Now it matches with the no. of substratum mentioned in the report
+
+Check no. of psu 
+
+```{r}
+hhold %>% 
+  summarize(no.of.psu=n_distinct(psu))
+```
+
+It matches with the Report
+
+
+Let's check out other bunch of variables
+
+what is that ruc? 
+
+```{r}
+hhold %>% 
+  summarize(n_distinct(ruc))
+```
+
+So it seems 3 different values 
+
+```{r}
+hhold %>% 
+    count(ruc)
+```
+
+Check out urbrural
+
+```{r}
+hhold %>% 
+    count(urbrural)
+```
+
+First check whether there is unique household id 
+
+```{r}
+hhold %>% 
+  summarize(n_distinct(hhid))
+```
+
+In 2016, there seems to be unique hhid
+
+
+
+```{r}
+members %>% 
+  summarize(n_distinct(hhid))
+```
+
+Find household size 
+
+
+```{r}
+mem.hs <- members %>% 
+              group_by(hhid) %>% 
+               mutate(hsize=n())
+```
+
+Now we will select only household head and few other variables 
+
+```{r}
+mem.hs2 <- mem.hs %>%
+            rename(rel.hh=s1aq02,
+                   sex.hh=s1aq01) %>% 
+            filter(rel.hh==1) %>% 
+             select(hhid, sex.hh, hsize, psu, stratum, stratum16, ruc, urbrural,hhwgt) %>% 
+            ungroup()
+```
+
+Find number male and female headed households
+
+```{r}
+mem.hs2 %>%
+  #group_by(sex.hh) %>% 
+  summarise(n())
+```
+
+Alternative method to find grouping count
+
+```{r}
+mem.hs2 %>% 
+  count(sex.hh)
+```
+
+ 
+Let's check out unweighted distribution of household size 
+
+Let's first find the overall mean household size 
+
+```{r}
+mem.hs2 %>% 
+  summarise(national=mean(hsize))
+```
+
+First by rural urban category
+
+```{r}
+mem.hs2 %>% 
+    group_by(urbrural) %>% 
+    summarize(mean.size=mean(hsize))
+```
+
+Then by sex of household head
+
+```{r}
+mem.hs2 %>% 
+    group_by(sex.hh) %>% 
+    summarize(mean.size=mean(hsize))
+```
+
+Now the two way table as in the Report (Table number 2.1)
+
+```{r}
+mem.hs2 %>% 
+    group_by(sex.hh, urbrural) %>% 
+    summarize(mean.size=mean(hsize))
+```
+
+If we match with the report in the table, we will find that it is not exactly matching. This is because, so far we have not considered the survey design into our analysis. 
+
+
+
+Let's do that by introducing  the srvyr package 
+
+```{r}
+library(srvyr)
+```
+
+Now let's insert the survey design 
+
+```{r}
+svy.tidy <- mem.hs2 %>%  
+             as_survey(id=psu,strata=stratum,weights=hhwgt)
+class(svy.tidy)
+summary(svy.tidy)
+```
+
+```{r}
+svy.tidy %>% 
+   summarise(national=survey_mean(hsize)) %>% 
+  mutate(national=round(national,2)) %>% 
+  select(national)
+```
+
+
+
+Rural urban category wise household size
+
+
+```{r}
+svy.tidy %>% 
+    group_by(urbrural) %>% 
+    summarize(mean.hsize=survey_mean(hsize)) %>% 
+    mutate(mean.hsize=round(mean.hsize,2)) %>% 
+    select(-mean.hsize_se)
+```
+
+Sex of household head wise household size 
+
+```{r}
+svy.tidy %>% 
+    group_by(sex.hh) %>% 
+    summarize(mean.hsize=survey_mean(hsize)) %>%          
+    mutate(mean.hsize=round(mean.hsize,2)) %>% 
+    select(-mean.hsize_se)
+```
+
+
+Now the final cross tabulation between sex of household head and rural urban category
+
+```{r}
+svy.tidy %>% 
+    group_by(sex.hh, urbrural) %>% 
+    summarize(mean.hsize=survey_mean(hsize)) %>% 
+    mutate(mean.hsize=round(mean.hsize,2)) %>% 
+    select(-mean.hsize_se)
+```
+Now let's save  svy.tidy
+
+```{r}
+save(svy.tidy, file = "./svy_tidy.rda")
+```
+
+
+We find that now the above numbers exactly matches Table 2.1 in the report. 
+
+
+# Health 
+
+First read the data 
+
+```{r}
+health <- read_dta("../HIES2016-20200905T093607Z-001/HIES2016/HH_SEC_3A.dta")
+```
+
+```{r}
+health %>% 
+    count(s3aq01)
+```
+
+```{r}
+health %>% 
+    count(s3aq02)
+```
+
+
+
