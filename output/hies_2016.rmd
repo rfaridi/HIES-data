@@ -17,15 +17,26 @@ Let's import some data
 
 Let's first import household data 
 
-```{r}
-hhold <- read_dta("../HIES2016-20200905T093607Z-001/HIES2016/COVER.dta")
+first download from google drive
+
+```{r, eval=F}
+drive_download("COVER.dta")
+```
+
+Let's read
+
+
+```{r, eval=F}
+hhold <- read_dta("./COVER.dta")
+saveRDS(hhold, file="./output/rdata/hies2016/hhold.rds")
 ```
 
 Let's import household members data 
 
-```{r}
-members <-   read_dta("../HIES2016-20200905T093607Z-001/HIES2016/HH_SEC_1A.dta")
-members
+```{r, eval=F}
+drive_download("HH_SEC_1A.dta")
+members <-   read_dta("./HH_SEC_1A.dta")
+saveRDS(members, file="./members.rds")
 ```
 
 Check no of strata 
